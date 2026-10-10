@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phrase Inbox tests</title>
+<style>
+  body { font: 15px/1.4 system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }
+  .pass { color: #188038; } .fail { color: #c5221f; font-weight: 700; }
+  pre { white-space: pre-wrap; margin: 2px 0 8px 18px; color: #555; }
+</style>
+</head>
+<body>
+<h1>Phrase Inbox tests</h1>
+<p id="summary">Running…</p>
+<ol id="out"></ol>
+<script src="gas-mocks.js"></script>
+<script>
+var results = [];
+function log(ok, name, detail) {
+  results.push({ ok: ok, name: name, detail: detail });
+  var li = document.createElement('li');
+  li.className = ok ? 'pass' : 'fail';
+  li.textContent = (ok ? 'PASS  ' : 'FAIL  ') + name;
+  if (detail) { var pre = document.createElement('pre'); pre.textContent = detail; li.appendChild(pre); }
+  document.getElementById('out').appendChild(li);
+}
+function eq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+async function test(name, fn) {
+  try { var d = await fn(); log(true, name, d || ''); }
+  catch (e) { log(false, name, e && e.stack || String(e)); }
+}
+function assert(c, msg) { if (!c) throw new Error(msg || 'assertion failed'); }
+function assertEq(a, b, msg) { if (!eq(a, b)) throw new Error((msg || 'not equal') + '\n  got:      ' + JSON.stringify(a) + '\n  expected: ' + JSON.stringify(b)); }
+
+function post(body) { return JSON.parse(doPost({ postData: { contents: JSON.stringify(body) } }).getContent()); }
+function get(params) { return JSON.parse(doGet({ parameter: params }).getContent()); }
+function docTexts() { return GAS.state().body.texts(); }
+
+// Some lines copied from the real doc (with zero-width spaces and trailing spaces).
+var REAL = [
+  '  ',
+  "It's a vicious circle. (رایج‌ترین و دقیق‌ترین معادل برای \"دور باطل\")",
+  '​It\'s like a catch-22. (برای موقعیتی که در یک بن‌بست منطقی)',
+  '  ',
+  "​He's dragging it out, and it's boring me to death.",
+  '(داره قضیه رو کش میده و داره حوصله‌ام رو سر می‌بره/مرگم میده.)',
+  'Distillation',
+  'تقطیر',
+  'Dial the volume down ',
+  'Dial back the spending',
+  'A greenish tinge ',
+  'This transformed into that.'
+];
+
+(async function main() {
+  var src = await (await fetch('../apps-script/Code.gs', { cache: 'no-store' })).text();
+  (0, eval)(src);
+  var TOKEN;
+
+  function fresh(lines) {
+    GAS.reset(lines);
+    setup();
+    TOKEN = GAS.state().props.TOKEN;
+  }
+
+  // ------------------------------------------------------------ Apps Script
+  await test('setup() stores token + doc id and creates exactly one hourly trigger', function () {
+    fresh(REAL.slice());
+    setup(); setup();
+    var s = GAS.state();
+    assert(TOKEN && TOKEN.length >= 32, 'token too short');
+    assertEq(s.props.TOKEN, TOKEN, 'token changed on re-run');
+    assertEq(s.props.DOC_ID, s.docId);
+    assertEq(s.triggers.length, 1, 'trigger count');
+    assertEq(s.triggers[0].spec, { fn: 'cleanupUsedEntries', hours: 1 });
+    assert(s.logs.some(function (l) { return l.indexOf(TOKEN) !== -1; }), 'token not logged');
+  });
+
+  await test('requests without the right token are rejected and change nothing', function () {
+    fresh(REAL.slice());
+    var before = docTexts();
+    assertEq(post({ action: 'add', id: 'abcd1234', text: 'x' }), { ok: false, error: 'unauthorized' });
+    assertEq(post({ action: 'add', id: 'abcd1234', text: 'x', token: 'wrong' }), { ok: false, error: 'unauthorized' });
+    assertEq(get({ action: 'count' }), { ok: false, error: 'unauthorized' });
+    assertEq(post({ action: 'delete', id: 'abcd1234', token: '' }), { ok: false, error: 'unauthorized' });
+    assertEq(docTexts(), before);
+  });
+
+  await test('add appends ONE paragraph in the exact format (Vancouver time)', function () {
+    fresh(REAL.slice());
+    var ts = Date.UTC(2026, 9, 10, 19, 5); // 12:05 PDT
+    var r = post({ token: TOKEN, action: 'add', id: 'k7pq2xam', text: 'Hold your horses', tag: 'Overheard', context: 'at the café', ts: ts });
+    assertEq(r, { ok: true, id: 'k7pq2xam' });
+    var t = docTexts();
+    assertEq(t.length, REAL.length + 1);
+    assertEq(t[t.length - 1], 'Hold your horses [Overheard] [at the café] [2026-10-10 12:05] ⟨k7pq2xam⟩');
+    return t[t.length - 1];
+  });
+
+  await test('empty context gives [] ; winter time uses PST', function () {
+    fresh(REAL.slice());
+    post({ token: TOKEN, action: 'add', id: 'aaaa1111', text: 'snow tires', tag: 'Word for a thing', context: '', ts: Date.UTC(2026, 11, 1, 8, 30) });
+    var t = docTexts();
+    assertEq(t[t.length - 1], 'snow tires [Word for a thing] [] [2026-12-01 00:30] ⟨aaaa1111⟩');
+  });
+
+  await test('Persian context is stored untouched; multi-line text stays ONE paragraph', function () {
+    fresh(REAL.slice());
+    post({ token: TOKEN, action: 'add', id: 'fa000001', text: 'first line\nsecond line', tag: "Couldn't say", context: 'دور باطل', ts: Date.UTC(2026, 9, 10, 19, 5) });
+    var t = docTexts();
+    assertEq(t.length, REAL.length + 1);
+    assertEq(t[t.length - 1], "first line second line [Couldn't say] [دور باطل] [2026-10-10 12:05] ⟨fa000001⟩");
+    return t[t.length - 1];
+  });
+
+  await test('retrying the same id does not duplicate (lost-response safety)', function () {
+    fresh(REAL.slice());
+    var p = { token: TOKEN, action: 'add', id: 'dup12345', text: 'once', tag: 'Work', ts: Date.now() };
+    post(p);
+    assertEq(post(p), { ok: true, id: 'dup12345', duplicate: true });
+    assertEq(docTexts().filter(function (x) { return x.indexOf('⟨dup12345⟩') !== -1; }).length, 1);
+  });
+
+  await test('an empty last line is reused instead of leaving a blank', function () {
+    fresh(['Dial the volume down', '']);
+    post({ token: TOKEN, action: 'add', id: 'reuse001', text: 'hi', tag: 'Work', ts: Date.UTC(2026, 9, 10, 19, 5) });
+    assertEq(docTexts(), ['Dial the volume down', 'hi [Work] [] [2026-10-10 12:05] ⟨reuse001⟩']);
+  });
+
+  await test('count (GET ?action=count and POST) = non-empty paragraphs', function () {
+    fresh(REAL.slice().concat(['​', '   ']));
+    var expected = REAL.filter(function (x) { return x.trim(); }).length;
+    assertEq(get({ action: 'count', token: TOKEN }), { ok: true, count: expected });
+    post({ token: TOKEN, action: 'add', id: 'cnt00001', text: 'one more', tag: 'Work', ts: Date.now() });
+    assertEq(post({ action: 'count', token: TOKEN }), { ok: true, count: expected + 1 });
+    return 'count = ' + (expected + 1);
+  });
+
+  await test('delete by id removes only that entry (and logs it)', function () {
+    fresh(REAL.slice());
+    post({ token: TOKEN, action: 'add', id: 'keep0001', text: 'keep me', tag: 'Work', ts: Date.now() });
+    post({ token: TOKEN, action: 'add', id: 'gone0001', text: 'oops', tag: 'Work', ts: Date.now() });
+    post({ token: TOKEN, action: 'add', id: 'keep0002', text: 'keep me too', tag: 'Work', ts: Date.now() });
+    var before = docTexts();
+    assertEq(post({ token: TOKEN, action: 'delete', id: 'gone0001' }), { ok: true, removed: 1 });
+    assertEq(docTexts(), before.filter(function (x) { return x.indexOf('⟨gone0001⟩') === -1; }));
+    assertEq(post({ token: TOKEN, action: 'delete', id: 'gone0001' }), { ok: true, removed: 0 });
+    var sheet = GAS.state().sheets[GAS.state().props.LOG_SHEET_ID];
+    assert(sheet && sheet.rows.length === 2 && sheet.rows[1][1] === 'app delete', 'log sheet row missing');
+  });
+
+  await test('deleting the LAST paragraph works (Docs forbids removing the final one)', function () {
+    fresh(['Dial back the spending']);
+    post({ token: TOKEN, action: 'add', id: 'last0001', text: 'end', tag: 'Work', ts: Date.now() });
+    assertEq(post({ token: TOKEN, action: 'delete', id: 'last0001' }), { ok: true, removed: 1 });
+    assertEq(docTexts(), ['Dial back the spending', '']);
+  });
+
+  await test('cleanup: removes exactly the listed entries (ids + old exact text), trashes file', function () {
+    fresh(REAL.slice());
+    var ts = Date.UTC(2026, 9, 10, 19, 5);
+    ['id000001', 'id000002', 'id000003', 'keepid01'].forEach(function (id, i) {
+      post({ token: TOKEN, action: 'add', id: id, text: 'entry ' + i, tag: 'Work', ts: ts });
+    });
+    var before = docTexts();
+    var s = GAS.state();
+    var used = s.anki.createFile('inbox-used-2026-10-10.txt', [
+      'id000001',                                   // bare id
+      '⟨id000002⟩',                                 // bracketed id
+      'entry 2 [Work] [] [2026-10-10 12:05] ⟨id000003⟩', // whole entry line
+      "He's dragging it out, and it's boring me to death.", // old line (doc has zero-width space)
+      'Dial the volume down',                       // old line (doc has trailing space)
+      'Not in the doc at all',                      // unmatched -> nothing deleted
+      '',
+      'Dial'                                        // partial text must NOT match "Dial back the spending"
+    ].join('\r\n'));
+    var other = s.anki.createFile('notes.txt', 'Distillation\n');
+    var other2 = s.anki.createFile('inbox-used-x.csv', 'Distillation\n');
+
+    var report = cleanupUsedEntries();
+
+    var removedExpected = [
+      before.find(function (x) { return x.indexOf('⟨id000001⟩') !== -1; }),
+      before.find(function (x) { return x.indexOf('⟨id000002⟩') !== -1; }),
+      before.find(function (x) { return x.indexOf('⟨id000003⟩') !== -1; }),
+      "​He's dragging it out, and it's boring me to death.",
+      'Dial the volume down '
+    ];
+    assertEq(docTexts(), before.filter(function (x) { return removedExpected.indexOf(x) === -1; }), 'doc after cleanup');
+    assert(used.isTrashed(), 'used file not trashed');
+    assert(!other.isTrashed() && !other2.isTrashed(), 'non-matching files must be left alone');
+    assertEq(report, { files: 1, removed: 5, unmatched: 2 });
+    var rows = s.sheets[s.props.LOG_SHEET_ID].rows;
+    assertEq(rows.length, 1 + 5 + 2, 'log rows');
+    return 'removed 5, unmatched 2 ("Not in the doc at all", "Dial"); notes.txt and .csv untouched';
+  });
+
+  await test('cleanup with no used files changes nothing', function () {
+    fresh(REAL.slice());
+    var before = docTexts();
+    assertEq(cleanupUsedEntries(), { files: 0, removed: 0, unmatched: 0 });
+    assertEq(docTexts(), before);
+  });
+
+  await test('selfTest() passes against the real doc layout', function () {
+    fresh(REAL.slice());
+    var before = docTexts();
+    selfTest();
+    assert(GAS.state().logs.some(function (l) { return l.indexOf('PASS') !== -1; }), 'no PASS log');
+    assertEq(docTexts().slice(0, before.length), before);
+  });
+
+  // ------------------------------------------------------------ automatic tags
+  await new Promise(function (r) { var s = document.createElement('script'); s.src = '../tagger.js'; s.onload = r; document.head.appendChild(s); });
+  await test('automatic tags guess sensibly', function () {
+    var cases = {
+      'Distillation': 'Word for a thing',
+      'A greenish tinge': 'Word for a thing',
+      'snow tires': 'Word for a thing',
+      "Let's touch base next week": 'Work',
+      'Dont cut the corners for safety issues...': 'Work',
+      'Can you send me the report by Friday?': 'Work',
+      'I envy him.': "Couldn't say",
+      'It slipped my mind': "Couldn't say",
+      "He's dragging it out, and it's boring me to death.": "Couldn't say",
+      'I’ve got my father’s nose': "Couldn't say",
+      'Dial back the spending': "Couldn't say"
+    };
+    var wrong = Object.keys(cases).filter(function (k) { return guessTag(k) !== cases[k]; })
+      .map(function (k) { return k + ' -> ' + guessTag(k) + ' (expected ' + cases[k] + ')'; });
+    assert(!wrong.length, wrong.join('\n'));
+    return Object.keys(cases).map(function (k) { return k + '  →  ' + cases[k]; }).join('\n');
+  });
+
+  // ------------------------------------------------------------ app sync (core.js) against Code.gs
+  await new Promise(function (r) { var q = indexedDB.deleteDatabase('phrase-inbox'); q.onsuccess = q.onerror = q.onblocked = r; });
+  await new Promise(function (r) { var s = document.createElement('script'); s.src = '../core.js'; s.onload = r; document.head.appendChild(s); });
+
+  var URL_ = 'https://script.google.com/macros/s/TEST/exec';
+  var net = { online: true, loseResponse: false, calls: 0 };
+  window.fetch = function (url, opts) {
+    if (url !== URL_) return Promise.reject(new TypeError('unexpected url ' + url));
+    net.calls++;
+    if (!net.online) return Promise.reject(new TypeError('Failed to fetch'));
+    var out = doPost({ postData: { contents: opts.body } }).getContent();
+    if (net.loseResponse) { net.loseResponse = false; return Promise.reject(new TypeError('connection reset')); }
+    assert(opts.headers['Content-Type'].indexOf('text/plain') === 0, 'must be a simple (no-preflight) request');
+    return Promise.resolve(new Response(out));
+  };
+
+  function statuses() { return PI.allEntries().then(function (l) { return l.map(function (e) { return e.status; }); }); }
+
+  await test('app: post online -> appears in doc, marked sent', async function () {
+    fresh(['']);
+    await PI.saveSettings({ url: URL_, token: TOKEN });
+    var e = await PI.addEntry({ text: 'Break the ice', tag: "Couldn't say", context: 'یخ را شکستن' });
+    assertEq(await statuses(), ['waiting']);
+    var r = await PI.flush();
+    assertEq(r, { sent: 1, pending: 0 });
+    assertEq(await statuses(), ['sent']);
+    assert(docTexts()[0].indexOf("Break the ice [Couldn't say] [یخ را شکستن] [") === 0, docTexts()[0]);
+    assert(docTexts()[0].endsWith('⟨' + e.id + '⟩'));
+    assertEq(await PI.count(), 1);
+    return docTexts()[0];
+  });
+
+  await test('app: offline -> queued as waiting, sent in capture order when back online', async function () {
+    net.online = false;
+    await PI.addEntry({ text: 'offline one', tag: 'Overheard', context: '' });
+    await new Promise(function (r) { setTimeout(r, 5); });
+    await PI.addEntry({ text: 'offline two', tag: 'Work', context: '' });
+    var failed = false;
+    try { await PI.flush(); } catch (err) { failed = true; }
+    assert(failed, 'flush should fail offline');
+    assertEq(await statuses(), ['waiting', 'waiting', 'sent']);
+    assertEq(docTexts().length, 1);
+    net.online = true;
+    assertEq(await PI.flush(), { sent: 2, pending: 0 });
+    assertEq(await statuses(), ['sent', 'sent', 'sent']);
+    var t = docTexts();
+    assert(t[1].indexOf('offline one') === 0 && t[2].indexOf('offline two') === 0, 'order: ' + JSON.stringify(t));
+  });
+
+  await test('app: response lost after the server wrote it -> retry does not duplicate', async function () {
+    net.loseResponse = true;
+    await PI.addEntry({ text: 'flaky network', tag: 'Work', context: '' });
+    try { await PI.flush(); } catch (err) { /* expected */ }
+    assertEq((await statuses())[0], 'waiting');
+    await PI.flush();
+    assertEq(docTexts().filter(function (x) { return x.indexOf('flaky network') === 0; }).length, 1);
+  });
+
+  await test('app: delete removes from device and from the doc (also queued when offline)', async function () {
+    var list = await PI.allEntries();
+    var target = list.find(function (e) { return e.text === 'offline one'; });
+    net.online = false;
+    await PI.deleteEntry(target.id);
+    try { await PI.flush(); } catch (err) { /* offline */ }
+    assert(docTexts().some(function (x) { return x.indexOf('offline one') === 0; }), 'should still be in doc while offline');
+    assert((await PI.getEntry(target.id)).status === 'delete');
+    net.online = true;
+    await PI.flush();
+    assert(!docTexts().some(function (x) { return x.indexOf('offline one') === 0; }), 'still in doc');
+    assert(!(await PI.getEntry(target.id)), 'still on device');
+    assertEq(docTexts().length, 3);
+  });
+
+  await test('app: wrong token is reported and nothing is lost', async function () {
+    await PI.saveSettings({ url: URL_, token: 'nope' });
+    await PI.addEntry({ text: 'kept safe', tag: 'Work', context: '' });
+    var msg = '';
+    try { await PI.flush(); } catch (err) { msg = err.message; }
+    assertEq(msg, 'unauthorized');
+    assertEq((await statuses())[0], 'waiting');
+    await PI.saveSettings({ url: URL_, token: TOKEN });
+    await PI.flush();
+    assertEq((await statuses())[0], 'sent');
+  });
+
+  var failed = results.filter(function (r) { return !r.ok; }).length;
+  document.getElementById('summary').textContent = failed ? failed + ' FAILED of ' + results.length : 'All ' + results.length + ' tests passed';
+  document.getElementById('summary').className = failed ? 'fail' : 'pass';
+  window.TEST_DONE = { total: results.length, failed: failed };
+})();
+</script>
+</body>
+</html>
