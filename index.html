@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Inbox</title>
+  <meta name="description" content="Capture English phrases into your Google Doc instantly.">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1B1B1D" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <img class="logo" src="icons/logo.png" alt="" width="52" height="52">
+    <h1>Inbox</h1>
+    <div class="menu-wrap">
+      <button id="menuBtn" class="menu-btn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      </button>
+      <div id="menu" class="menu" role="menu" hidden>
+        <p class="menu-info"><span id="count">…</span> waiting in your doc</p>
+        <p class="menu-info" id="toSend" hidden></p>
+        <p class="menu-info menu-off" id="offline" hidden>You're offline. Entries will send later.</p>
+        <button type="button" role="menuitem" id="sendNow" hidden>Send now</button>
+        <button type="button" role="menuitem" id="openSettings">Connection settings</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <form id="composer" class="card" autocomplete="off">
+      <label for="text" class="sr-only">Phrase</label>
+      <textarea id="text" placeholder="Paste it here ..." autofocus
+                enterkeyhint="enter" spellcheck="true" autocapitalize="sentences" dir="auto"></textarea>
+      <div class="card-foot">
+        <button type="button" id="mic" class="mic" aria-label="Hold to speak">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/>
+            <path class="mic-grill" d="M10.5 6h3M10.5 8.5h3M10.5 11h3"/>
+            <path class="mic-stand" d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v4M8.5 21.5h7"/>
+          </svg>
+        </button>
+        <span id="listening" class="listening" hidden>Listening…</span>
+        <button type="submit" id="post" class="post">Post</button>
+      </div>
+    </form>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6"/></svg>
+      <input id="search" type="search" dir="auto" placeholder="Search ..." aria-label="Search your entries">
+    </div>
+
+    <ul id="list" class="timeline"></ul>
+    <p id="empty" class="empty" hidden>Nothing yet. Your phrases will show up here.</p>
+    <button type="button" id="more" class="more" aria-label="Show more" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+    </button>
+  </main>
+
+  <dialog id="settings" class="sheet">
+    <form method="dialog" id="settingsForm">
+      <h2>Connect to your Google Doc</h2>
+      <p class="hint">Paste the two values from the Apps Script setup. You only do this once.</p>
+      <label>Script URL
+        <input id="setUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" required>
+      </label>
+      <label>Token
+        <input id="setToken" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+      </label>
+      <p id="settingsMsg" class="msg" role="status"></p>
+      <div class="sheet-actions">
+        <button type="button" id="cancelSettings" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="saveSettings" class="btn btn-primary">Test &amp; save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="core.js"></script>
+  <script src="tagger.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
