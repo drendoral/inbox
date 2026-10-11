@@ -56,17 +56,17 @@ svg { width: 24px; height: 24px; flex: none; }
   padding: calc(env(safe-area-inset-top) + 22px) 24px 10px 26px;
   max-width: 640px; margin: 0 auto;
 }
-.logo { width: 46px; height: 38px; margin: 4px 6px 0 0; }
+.logo { width: 37px; height: 31px; margin: 3px 4px 0 0; }
 .logo-fill { fill: var(--accent); }
 .logo-fold { fill: var(--fold); }
-.bar h1 { margin: 6px 0 0; font-size: 32px; font-weight: 700; color: var(--strong); letter-spacing: -.01em; }
+.bar h1 { margin: 4px 0 0; font-size: 26px; font-weight: 700; color: var(--strong); letter-spacing: -.01em; }
 .bar { position: relative; }
 .menu-wrap { margin-top: 6px; }
 .menu-btn {
   width: 48px; height: 48px; display: grid; place-items: center;
   border: 0; border-radius: 12px; background: transparent; color: var(--strong);
 }
-.menu-btn svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.menu-btn svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .menu-btn:active, .menu-btn[aria-expanded="true"] { background: rgba(127, 127, 127, .14); }
 .menu {
   position: absolute; top: calc(100% - 2px); left: 90px; z-index: 20;
@@ -107,7 +107,7 @@ textarea::placeholder { color: var(--text); opacity: .9; }
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   transition: background .15s, transform .15s;
 }
-.mic svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.mic svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
 .mic svg rect { fill: currentColor; stroke: none; }
 .mic svg .mic-grill { stroke: var(--card); stroke-width: 1.1; }
 .mic.on { background: var(--accent); color: #fff; transform: scale(1.12); box-shadow: 0 0 0 8px rgba(246, 194, 66, .25); animation: ring 1.2s infinite; }
@@ -116,7 +116,7 @@ textarea::placeholder { color: var(--text); opacity: .9; }
 .listening { flex: 1; font-size: 15px; color: var(--accent-deep); }
 .post {
   margin-left: auto; border: 0; background: transparent; color: var(--strong);
-  font-size: 26px; font-weight: 600; padding: 6px 4px 6px 16px; min-height: 52px;
+  font-size: 21px; font-weight: 600; padding: 6px 4px 6px 16px; min-height: 52px;
 }
 .post:active { color: var(--accent-deep); }
 
