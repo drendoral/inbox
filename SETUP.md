@@ -18,7 +18,7 @@ About 20 minutes, once. Parts A and B are on your computer, part C on your phone
 8. Under **Build and deployment → Source** choose **Deploy from a branch**.
    Under **Branch** choose **main** and **/ (root)** → **Save**.
 9. Wait 1–2 minutes and refresh. The page shows **"Your site is live at
-   https://YOUR-USERNAME.github.io/phrase-inbox/"**. That's your app address.
+   https://drendoral.github.io/inbox/"**. That's your app address.
 
 > The repository is public, but it holds no secrets: your script URL and token
 > live only on your phone.
@@ -37,7 +37,7 @@ About 20 minutes, once. Parts A and B are on your computer, part C on your phone
 5. Click the **Save** icon (floppy disk) or press **Ctrl+S**.
 6. Optional: click **Untitled project** at the top and rename it to `Inbox`.
 
-### B2. Run setup once (creates your token and the hourly cleanup)
+### B2. Run setup once (creates your token)
 
 1. In the toolbar, the dropdown next to **Debug** shows a function name. Choose **setup**.
 2. Click **Run**.
@@ -63,16 +63,6 @@ About 20 minutes, once. Parts A and B are on your computer, part C on your phone
 Paste the **URL** and the **token** into a Google Keep note (or email them to yourself).
 After part C works, delete that note.
 
-### B5. Real end-to-end test in your doc
-
-1. In the Apps Script editor, choose **selfTest** in the dropdown → **Run**.
-2. The log should end with **`PASS — cleanup removed exactly the two listed lines…`**.
-   It added a test entry and an old-style line to your doc, put an `inbox-used-selftest-….txt`
-   file in **daily in doc/Anki**, ran the cleanup, checked that exactly those two lines were
-   removed and nothing else changed, and checked the file went to the trash.
-3. A spreadsheet **Phrase Inbox log** now exists in your **daily in doc** folder. It lists
-   everything the script deleted.
-
 > **If you change the code later:** Deploy → **Manage deployments** → pencil icon →
 > **Version: New version** → **Deploy**. The URL stays the same.
 
@@ -81,7 +71,7 @@ After part C works, delete that note.
 ## Part C — Install on your Samsung (Chrome)
 
 1. On the phone, open **Chrome** (not Samsung Internet) and go to
-   `https://YOUR-USERNAME.github.io/phrase-inbox/`.
+   `https://drendoral.github.io/inbox/`.
 2. The **Connect to your Google Doc** box appears. Paste the **Script URL** and **Token** →
    **Test & save**. It should say **Connected to "daily in doc 001"**.
 3. Tap Chrome's **⋮** menu (top-right) → **Add to home screen** → **Install**
@@ -98,19 +88,11 @@ After part C works, delete that note.
 3. In the app, tap the entry → **Delete** → **OK**. The line disappears from the doc.
 4. Press and **hold** the 🎙 mic, say `this is a voice test`, let go → **Post**.
 
-**Testing cleanup by hand (optional):**
-1. Post something, open the doc, and copy the id between ⟨ ⟩ on its line (e.g. `abc12345`).
-2. On the computer, create a text file named `inbox-used-test.txt` containing just that id.
-3. Upload it to Drive folder **daily in doc → Anki**.
-4. Either wait up to an hour, or in Apps Script choose **cleanupUsedEntries** → **Run**.
-5. That one line is gone, the file is in the Drive trash, and the log sheet has a new row.
-
 ---
 
 ## Good to know
 
-- **The ☰ menu** shows **"N waiting in your doc"** (how many non-empty lines are in the doc, i.e.
-  everything not yet cleaned up) and how many entries are still on the phone, not yet sent.
+- **The ☰ menu** shows **"N waiting in your doc"** (how many non-empty lines are in the doc) and how many entries are still on the phone, not yet sent.
 - **Tags are automatic:** short names of things → *Word for a thing*; work words (meeting, client,
   report, touch base…) → *Work*; everything else → *Couldn't say*. Tap an entry to see its tag.
 - **Voice:** hold the mic the whole time you speak. It needs internet.
