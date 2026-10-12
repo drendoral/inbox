@@ -52,16 +52,19 @@ svg { width: 24px; height: 24px; flex: none; }
 
 /* ---------- header */
 .bar {
-  display: flex; align-items: center; gap: 10px;
-  padding: calc(env(safe-area-inset-top) + 22px) 24px 10px 26px;
+  position: relative; display: flex; align-items: flex-end; gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 18px) 24px 10px 26px;
   max-width: 640px; margin: 0 auto;
 }
-.logo { width: 37px; height: 31px; margin: 3px 4px 0 0; }
-.logo-fill { fill: var(--accent); }
-.logo-fold { fill: var(--fold); }
-.bar h1 { margin: 4px 0 0; font-size: 26px; font-weight: 700; color: var(--strong); letter-spacing: -.01em; }
-.bar { position: relative; }
-.menu-wrap { margin-top: 6px; }
+/* Arrow wraps the title: head above it, tail curving down on its left. */
+.brand { position: relative; display: flex; align-items: flex-end; height: 75px; padding-left: 26px; }
+/* bottom: 5px puts the tail's end on the title's baseline */
+.brand .arrow { position: absolute; left: 0; bottom: 5px; width: 77px; height: 70px; fill: var(--accent); }
+.bar h1 {
+  position: relative; margin: 0; line-height: 1;
+  font-size: 26px; font-weight: 700; color: var(--strong); letter-spacing: -.01em;
+}
+.menu-wrap { margin: 0 0 -12px -11px; }
 .menu-btn {
   width: 48px; height: 48px; display: grid; place-items: center;
   border: 0; border-radius: 12px; background: transparent; color: var(--strong);
