@@ -1,7 +1,7 @@
 /* Phrase Inbox — service worker: offline app shell + background sync. */
 importScripts('core.js');
 
-var CACHE = 'phrase-inbox-v4';
+var CACHE = 'phrase-inbox-v5';
 var FONT_CACHE = 'phrase-inbox-fonts';
 var SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'core.js', 'tagger.js', 'manifest.webmanifest',
